@@ -1,31 +1,34 @@
 ---
-name: qa-swarm:attack
+name: attack
 description: >
   Deploy a QA agent swarm to analyze the codebase and produce a prioritized findings report,
   implementation spec, and test plan. Use when the user wants to run QA analysis, find bugs
   across multiple dimensions (security, performance, correctness, architecture, etc.), or
   deploy a swarm of specialized QA agents. Triggers on: code review, QA audit, bug sweep,
   quality analysis, find issues, check for bugs, swarm analysis.
-argument-hint: "<prompt describing what to analyze>"
 ---
 
-You are orchestrating a QA Swarm analysis. The user's analysis prompt is:
+Orchestrate a QA Swarm analysis. Treat the text supplied with the skill invocation, or the user's current request when no explicit argument was supplied, as the analysis prompt.
 
-**"{$ARGUMENTS}"**
+## Portable role loading
+
+Resolve bundled files relative to this `SKILL.md`, not the current working directory. The role directory is `../../agents/` from this file. Before dispatching any specialist, read that role's Markdown file and include its body in the subagent prompt. Claude Code may expose the same files as namespaced agent types, but never depend on that registration: Codex discovers the skills and does not automatically register `agents/` files.
+
+Use the host's native subagent facility. Parallelize independent roles in one batch when supported. Model labels below are recommendations; use the closest available model without blocking the run. Use an available structured-input facility for user gates, or ask in plain chat when none exists.
 
 Follow this pipeline exactly. Do not skip steps.
 
 ## Timing
 
-Track elapsed time for each phase. At the start of each step, run `date +%s` (Bash tool) to capture the Unix timestamp. Store these timestamps so you can compute durations at the end.
+Track elapsed time for each phase. At the start of each step, capture a Unix timestamp with an available shell command. Store these timestamps so you can compute durations at the end.
 
 ## Step 1: SETUP + PRE-READ
 
-Record the pipeline start time: run `date +%s` and store it as `t_start`.
+Record the pipeline start time and store it as `t_start`.
 
 ### 1a. Build file tree and categorize
 
-1. Use the Glob tool to list all source files (exclude node_modules, target, dist, build, .git, vendor, __pycache__)
+1. List all source files (exclude node_modules, target, dist, build, .git, vendor, __pycache__)
 2. Categorize every source file into tags based on file path and name:
    - **auth**: authentication, authorization, login, session, token, JWT, OAuth
    - **api**: route definitions, controllers, handlers, REST/GraphQL endpoints
@@ -62,7 +65,7 @@ Based on detected project type:
 
 **This is the key performance optimization.** Read ALL non-test source files and store their contents grouped by tag. This eliminates agent file-reading overhead -- agents receive code inline and analyze immediately with zero tool calls.
 
-1. For each non-test source file, read it using the Read tool (cap at 750 lines per file -- if longer, read first 400 + middle 100 lines around the midpoint + last 150 lines with `[... {N} lines omitted ...]` markers between sections)
+1. For each non-test source file, read it with available filesystem tools (cap at 750 lines per file -- if longer, read first 400 + middle 100 lines around the midpoint + last 150 lines with `[... {N} lines omitted ...]` markers between sections)
 2. Group the file contents by tag. A file with multiple tags appears in multiple groups.
 3. Format each file as:
    ```
@@ -70,7 +73,7 @@ Based on detected project type:
    {file contents}
    ```
 
-Launch multiple Read calls in parallel to speed up this phase.
+Parallelize independent reads to speed up this phase.
 
 ### 1e. Print summary and confirm
 
@@ -124,7 +127,7 @@ FULL FILE TREE (for reference -- paths only):
 YOUR SCOPED SOURCE CODE:
 {the actual file contents for this agent's tagged files, formatted as === path === \n content}
 
-{Read the agent definition file from agents/qa-{name}.md and include its full content here as the agent's instructions}
+{Read ../../agents/qa-{name}.md relative to this skill and include its full content here as the agent's instructions}
 
 Analyze the code provided above according to your specialty. Return your findings as structured JSON.
 ```
@@ -147,7 +150,7 @@ Analyze the code provided above according to your specialty. Return your finding
 - **qa-supply-chain** (model: haiku): config files + dependency/package files
 - **qa-state-mgmt** (model: haiku): state + frontend + logic files
 
-Launch ALL in parallel (all in one message with multiple Agent tool calls).
+Launch all selected roles in one parallel batch when the host supports it. Each prompt must include the corresponding bundled role definition loaded from `../../agents/`.
 
 **Wait for ALL agents to complete.** If any agent fails, log it and continue:
 ```
@@ -288,7 +291,7 @@ Launch ONE agent:
 - Has access to the codebase (to read existing test patterns and verify P0 evidence)
 - Produces BOTH the implementation spec AND the test plan
 
-Read the agent definition from `agents/qa-fix-planner.md` and include its full content in the prompt.
+Read `../../agents/qa-fix-planner.md`, resolved relative to this skill, and include its full content in the prompt.
 
 Record timestamp: `t_output_done`.
 
@@ -357,25 +360,26 @@ Immediately after printing the summary, auto-invoke the implement phase in a **f
 Ask the user once:
 ```
 Proceed to implementation now? [Y/n]
-(Selecting Y hands off to a fresh-context subagent running /qa-swarm:implement.
+(Selecting Y hands off to a fresh-context subagent running the QA Swarm implement skill.
  Selecting n stops here -- you can resume later by running:
-   /qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md)
+   Claude Code: /qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md
+   Codex: $qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md)
 ```
 
 If the user declines (n), STOP.
 
-If the user confirms (Y or empty), spawn a `general-purpose` `Agent` with the following self-contained prompt (the subagent has no access to this session's context, so the prompt MUST stand alone):
+If the user confirms (Y or empty), spawn a fresh-context general subagent with the following self-contained prompt. Resolve the sibling implementation skill as `../implement/SKILL.md` relative to this file and pass its absolute path; the subagent has no access to this session's context, so the prompt MUST stand alone:
 
 ```
-You are executing the qa-swarm:implement skill in a fresh session.
+You are executing the QA Swarm implement skill in a fresh session.
 
-Invoke the Skill tool with:
-  skill: "qa-swarm:implement"
-  args: "{report_abs_path} {spec_abs_path} {tests_abs_path}"
+Read the complete skill instructions at {implement_skill_abs_path}. Treat these as
+the active instructions and execute them with this invocation input:
+  {report_abs_path} {spec_abs_path} {tests_abs_path}
 
 All three files already exist on disk. Read them fresh. Follow the skill
-exactly -- including phase selection (present the table, wait for user input
-via AskUserQuestion), TDD setup (3 parallel test-writer agents), phase
+exactly -- including phase selection (present the table and wait for user input
+using an available structured-input facility or plain chat), TDD setup (up to 3 parallel test-writer agents), phase
 execution, and final results report.
 
 When the skill completes, return a concise summary: phases run, issues fixed,

@@ -1,8 +1,8 @@
 # QA Swarm
 
-![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fqa-swarm%2Fmain%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&color=blue)
+![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fqa-swarm%2Fv1.5.0%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&prefix=v&color=blue)
 
-AI-powered code quality analyzer that finds security, performance, architecture, and correctness issues across your codebase using specialized agents -- then fixes them via TDD.
+AI-powered code quality analyzer for Claude Code and Codex that finds security, performance, architecture, and correctness issues across your codebase using specialized agents -- then fixes them via TDD.
 
 Part of the [MisterVitoPro Plugin Marketplace](https://github.com/MisterVitoPro/qa-claude-market).
 
@@ -15,16 +15,20 @@ Part of the [MisterVitoPro Plugin Marketplace](https://github.com/MisterVitoPro/
 ## Quick Start
 
 ```bash
-# Install
+# Claude Code
 claude plugin marketplace add MisterVitoPro/qa-claude-market
 claude plugin install qa-swarm@mistervitopro-plugin-marketplace
-
-# Analyze your codebase
 /qa-swarm:attack "find bugs in the authentication and authorization flow"
-
-# After the swarm completes, implement fixes using the generated file paths
 /qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
+
+# Codex
+codex plugin marketplace add MisterVitoPro/qa-claude-market
+codex plugin add qa-swarm@mistervitopro-plugin-marketplace
+$qa-swarm:attack "find bugs in the authentication and authorization flow"
+$qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 ```
+
+Start a new session after installation so the bundled skills are loaded. Version 1.5.0 keeps one shared orchestration source for both clients and loads every bundled specialist definition relative to the active skill before native subagent dispatch.
 
 ## Why QA Swarm?
 
@@ -45,7 +49,7 @@ Most code review approaches give you one lens at a time. QA Swarm runs 6-12 spec
 
 ## Sample Output
 
-After running `/qa-swarm:attack`, you get a ranked report like this:
+After running the QA Swarm attack skill, you get a ranked report like this:
 
 ```markdown
 # QA Swarm Report
@@ -93,11 +97,16 @@ All files are saved to `docs/qa-swarm/{date}-report.md`, `{date}-spec.md`, and `
 ## Installation
 
 ```bash
+# Claude Code
 claude plugin marketplace add MisterVitoPro/qa-claude-market
 claude plugin install qa-swarm@mistervitopro-plugin-marketplace
+
+# Codex
+codex plugin marketplace add MisterVitoPro/qa-claude-market
+codex plugin add qa-swarm@mistervitopro-plugin-marketplace
 ```
 
-Or load directly for a single session:
+Claude Code can also load the checkout directly for a single session:
 
 ```bash
 claude --plugin-dir /path/to/qa-swarm
@@ -108,27 +117,25 @@ claude --plugin-dir /path/to/qa-swarm
 ### Run QA Analysis
 
 ```
+# Claude Code
 /qa-swarm:attack "check all API endpoints for security and input validation issues"
+
+# Codex
+$qa-swarm:attack "check all API endpoints for security and input validation issues"
 ```
 
-```
-/qa-swarm:attack "review the database layer for data integrity and performance problems"
-```
+After the swarm completes, the attack skill asks once whether to proceed to implementation. Selecting `Y` auto-hands off to the implement skill in a **fresh-context subagent**. Selecting `n` stops so you can resume later with either client:
 
 ```
-/qa-swarm:attack "find bugs in the authentication and authorization flow"
-```
-
-After the swarm completes, `/qa-swarm:attack` asks once whether to proceed to implementation. Selecting `Y` auto-hands off to `/qa-swarm:implement` in a **fresh-context subagent** (functionally equivalent to `/clear` + manual invocation, without the keystrokes). Selecting `n` stops so you can resume later with:
-
-```
-/qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md
+Claude Code: /qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md
+Codex: $qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md
 ```
 
 ### Implement Fixes
 
 ```
-/qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
+Claude Code: /qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
+Codex: $qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 ```
 
 The implementation pipeline:
@@ -198,7 +205,7 @@ You are asked to confirm which optional agents to activate before the swarm laun
 <details>
 <summary><h2>Pipeline Architecture</h2></summary>
 
-### Attack Pipeline (`/qa-swarm:attack`)
+### Attack Pipeline
 
 ```
 Step 1: Setup + Pre-read

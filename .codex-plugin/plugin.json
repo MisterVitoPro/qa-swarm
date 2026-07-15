@@ -1,0 +1,41 @@
+{
+  "name": "qa-swarm",
+  "version": "1.5.0",
+  "description": "Run a parallel specialist code review, produce ranked evidence-backed findings and a test plan, then implement selected fixes through a test-first loop.",
+  "author": {
+    "name": "MisterVitoPro",
+    "url": "https://github.com/MisterVitoPro"
+  },
+  "homepage": "https://github.com/MisterVitoPro/qa-swarm",
+  "repository": "https://github.com/MisterVitoPro/qa-swarm",
+  "license": "MIT",
+  "keywords": [
+    "qa",
+    "testing",
+    "code-review",
+    "tdd",
+    "security-audit",
+    "bug-detection",
+    "developer-tools"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "QA Swarm",
+    "shortDescription": "Review and fix code with specialist agents",
+    "longDescription": "Deploy focused security, correctness, performance, architecture, data-flow, and concurrency reviewers in parallel; rank and corroborate concrete findings; generate a fix spec and test plan; and implement selected fixes through a test-first loop.",
+    "developerName": "MisterVitoPro",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/MisterVitoPro/qa-swarm",
+    "defaultPrompt": [
+      "Audit this repository for security and correctness bugs.",
+      "Run a QA swarm over the most risky parts of this codebase.",
+      "Implement selected findings from this QA Swarm report."
+    ],
+    "brandColor": "#0F766E"
+  }
+}

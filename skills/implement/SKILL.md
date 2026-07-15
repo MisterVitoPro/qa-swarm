@@ -1,16 +1,21 @@
 ---
-name: qa-swarm:implement
+name: implement
 description: >
   Implement fixes from a QA swarm analysis: write TDD tests, fix code by priority, loop
-  until tests pass. Takes the 3 output file paths from a /qa-swarm:attack run.
-argument-hint: "<report.md> <spec.md> <tests.md>"
+  until tests pass. Takes the 3 output file paths from a QA Swarm attack run.
 ---
 
-You are orchestrating QA Swarm implementation. You will write tests, fix code, and loop until green.
+Orchestrate QA Swarm implementation: write tests, fix code, and loop until green. Parse the three file paths from the text supplied with the skill invocation.
+
+## Portable role loading and dispatch
+
+Resolve bundled files relative to this `SKILL.md`, not the current working directory. The role directory is `../../agents/` from this file. Before dispatching a `qa-tdd` test writer, read `../../agents/qa-tdd.md` and include its body in the subagent prompt. Claude Code may expose bundled files as namespaced agent types, but never depend on that registration.
+
+Use the host's native subagent facility. Parallelize independent test-writer slices in one batch when supported. Model labels are recommendations; use the closest available model without blocking. Use an available structured-input facility at user gates, or ask in plain chat when none exists.
 
 ## Progress Tracking
 
-Use Claude Tasks (TaskCreate, TaskUpdate) throughout this pipeline to track progress. The user should always be able to see what has been done, what is in progress, and what remains.
+Use the host's progress/task facility when available. Otherwise maintain and print a concise checklist with the same task hierarchy and update it after each transition. The user should always be able to see what has been done, what is in progress, and what remains.
 
 **Reference the implementation plan:** The spec and report files contain the prioritized findings and fix details. All tasks you create should reference the relevant finding IDs and spec sections so that agents and the user can trace each task back to the plan.
 
@@ -42,7 +47,7 @@ Wait for confirmation before proceeding.
 
 ## Arguments
 
-Parse the three file paths from the arguments: `{$ARGUMENTS}`
+Parse the three file paths from the skill invocation input.
 
 Expected: `<report_path> <spec_path> <test_plan_path>`
 
@@ -52,10 +57,11 @@ Expected: `<report_path> <spec_path> <test_plan_path>`
    ```
    Error: Expected 3 file paths, got {N}.
 
-   Usage: /qa-swarm:implement <report.md> <spec.md> <test_plan.md>
-   Example: /qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
+   Claude Code: /qa-swarm:implement <report.md> <spec.md> <test_plan.md>
+   Codex: $qa-swarm:implement <report.md> <spec.md> <test_plan.md>
+   Example: $qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 
-   Run /qa-swarm:attack first to generate these files.
+   Run the QA Swarm attack skill first to generate these files.
    ```
    Then STOP.
 
@@ -70,7 +76,7 @@ Expected: `<report_path> <spec_path> <test_plan_path>`
      {date}-spec.md     (implementation spec)
      {date}-tests.md    (TDD test plan)
 
-   Run /qa-swarm:attack first to generate these files.
+   Run the QA Swarm attack skill first to generate these files.
    ```
    Then STOP.
 
@@ -121,7 +127,7 @@ Wait for user selection before proceeding. Parse their input to determine which 
 
 ### Create Tasks After Phase Selection
 
-Once the user selects phases, create the full task tree using TaskCreate:
+Once the user selects phases, create the full task tree with the host's progress/task facility or the fallback checklist:
 
 1. Create a pipeline task: `"TDD Setup: Write test files for selected phases"`
 2. For each selected phase, create a phase task:
@@ -163,7 +169,7 @@ TDD partitioning:
 
 ### 3c. Launch 3 qa-tdd agents in parallel
 
-Launch the test-writer agents **in a single message with multiple Agent tool calls** so they run concurrently. Each agent (model: sonnet, Mode 2) receives:
+Launch the test-writer agents in one parallel batch when supported. Include the full `qa-tdd` role definition loaded from `../../agents/qa-tdd.md` in every prompt. Each agent (recommended model: sonnet, Mode 2) receives:
 
 - Its assigned slice of the test plan (only its bucket's findings + test code blocks, inlined into the prompt)
 - The list of test file paths it owns -- with an explicit instruction that it MUST NOT write to any file outside this list
