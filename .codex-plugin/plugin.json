@@ -1,6 +1,6 @@
 {
   "name": "qa-swarm",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Run a parallel specialist code review, produce ranked evidence-backed findings and a test plan, then implement selected fixes through a test-first loop.",
   "author": {
     "name": "MisterVitoPro",

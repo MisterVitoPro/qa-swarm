@@ -4,7 +4,7 @@
 
 AI-powered code quality analyzer for Claude Code and Codex that finds security, performance, architecture, and correctness issues across your codebase using specialized agents -- then fixes them via TDD.
 
-Part of the [MisterVitoPro Plugin Marketplace](https://github.com/MisterVitoPro/qa-claude-market).
+Part of the [Esper](https://github.com/MisterVitoPro/esper).
 
 - **6 core Sonnet agents** scan in parallel (security & error handling, performance & resources, correctness, architecture, data flow & taint analysis, async & concurrency patterns)
 - **Up to 6 optional Haiku agents** activate based on your project type (config review, type safety, supply chain, etc.)
@@ -16,14 +16,14 @@ Part of the [MisterVitoPro Plugin Marketplace](https://github.com/MisterVitoPro/
 
 ```bash
 # Claude Code
-claude plugin marketplace add MisterVitoPro/qa-claude-market
-claude plugin install qa-swarm@mistervitopro-plugin-marketplace
+claude plugin marketplace add MisterVitoPro/esper
+claude plugin install qa-swarm@esper
 /qa-swarm:attack "find bugs in the authentication and authorization flow"
 /qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 
 # Codex
-codex plugin marketplace add MisterVitoPro/qa-claude-market
-codex plugin add qa-swarm@mistervitopro-plugin-marketplace
+codex plugin marketplace add MisterVitoPro/esper
+codex plugin add qa-swarm@esper
 $qa-swarm:attack "find bugs in the authentication and authorization flow"
 $qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 ```
@@ -98,12 +98,12 @@ All files are saved to `docs/qa-swarm/{date}-report.md`, `{date}-spec.md`, and `
 
 ```bash
 # Claude Code
-claude plugin marketplace add MisterVitoPro/qa-claude-market
-claude plugin install qa-swarm@mistervitopro-plugin-marketplace
+claude plugin marketplace add MisterVitoPro/esper
+claude plugin install qa-swarm@esper
 
 # Codex
-codex plugin marketplace add MisterVitoPro/qa-claude-market
-codex plugin add qa-swarm@mistervitopro-plugin-marketplace
+codex plugin marketplace add MisterVitoPro/esper
+codex plugin add qa-swarm@esper
 ```
 
 Claude Code can also load the checkout directly for a single session:

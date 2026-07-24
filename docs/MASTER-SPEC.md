@@ -1220,11 +1220,11 @@ Agent-specific constraints.
 
 ## QA Swarm
 
-![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fqa-claude-market%2Fmain%2Fplugins%2Fqa-swarm%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&color=blue)
+![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fesper%2Fmain%2Fplugins%2Fqa-swarm%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&color=blue)
 
 AI-powered code quality analyzer that finds security, performance, architecture, and correctness issues across your codebase using specialized agents -- then fixes them via TDD.
 
-Part of the [MisterVitoPro Plugin Marketplace](../../README.md).
+Part of the [Esper](../../README.md).
 
 - **6 core Sonnet agents** scan in parallel (security & error handling, performance & resources, correctness, architecture, data flow & taint analysis, async & concurrency patterns)
 - **Up to 6 optional Haiku agents** activate based on your project type (config review, type safety, supply chain, etc.)
