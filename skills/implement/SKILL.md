@@ -5,7 +5,29 @@ description: >
   until tests pass. Takes the 3 output file paths from a QA Swarm attack run.
 ---
 
-Orchestrate QA Swarm implementation: write tests, fix code, and loop until green. Parse the three file paths from the text supplied with the skill invocation.
+Orchestrate QA Swarm implementation: write tests, fix code, and loop until green. Parse the three file paths (and the optional `--model` option) from the text supplied with the skill invocation.
+
+## Model selection
+
+Three model tiers are supported: `opus`, `sonnet`, and `haiku`. Each dispatch below lists its default. The user can override the whole run with one option:
+
+- `--model opus` | `--model sonnet` | `--model haiku` anywhere in the invocation text (also accept `model=opus` and plain-language forms such as "use opus").
+- Remove the option from the text before parsing the three file paths.
+- Store the result as `swarm_model`. When absent, `swarm_model` is `auto` and every role uses its default (TDD writers: sonnet, P0 implementation: opus, P1-P3 implementation: sonnet).
+
+When `swarm_model` is set, pass it as the model for EVERY agent dispatched by this skill. Model labels are recommendations; if the host cannot provide the requested tier, use the closest available model and print one line saying which model was substituted -- never block the run.
+
+### Host model mapping
+
+Tier names are host-neutral. Resolve each role's tier (default or `swarm_model`) and translate it to the host's model name at dispatch time:
+
+| Tier | Claude Code | Codex |
+|------|-------------|-------|
+| opus | opus | Terra |
+| sonnet | sonnet | Luna |
+| haiku | haiku | Luna |
+
+On Codex, also accept `--model terra` (= opus) and `--model luna` (= sonnet) as aliases. Keep printed labels in tier terms and show the mapped name the first time each tier is used on Codex (for example `opus -> Terra`).
 
 ## Portable role loading and dispatch
 
@@ -47,9 +69,9 @@ Wait for confirmation before proceeding.
 
 ## Arguments
 
-Parse the three file paths from the skill invocation input.
+Parse the three file paths from the skill invocation input, after removing any `--model` option.
 
-Expected: `<report_path> <spec_path> <test_plan_path>`
+Expected: `<report_path> <spec_path> <test_plan_path> [--model opus|sonnet|haiku]`
 
 ## Step 1: VALIDATE AND INGEST
 
@@ -57,8 +79,8 @@ Expected: `<report_path> <spec_path> <test_plan_path>`
    ```
    Error: Expected 3 file paths, got {N}.
 
-   Claude Code: /qa-swarm:implement <report.md> <spec.md> <test_plan.md>
-   Codex: $qa-swarm:implement <report.md> <spec.md> <test_plan.md>
+   Claude Code: /qa-swarm:implement <report.md> <spec.md> <test_plan.md> [--model opus|sonnet|haiku]
+   Codex: $qa-swarm:implement <report.md> <spec.md> <test_plan.md> [--model opus|sonnet|haiku]
    Example: $qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 
    Run the QA Swarm attack skill first to generate these files.
@@ -169,7 +191,7 @@ TDD partitioning:
 
 ### 3c. Launch 3 qa-tdd agents in parallel
 
-Launch the test-writer agents in one parallel batch when supported. Include the full `qa-tdd` role definition loaded from `../../agents/qa-tdd.md` in every prompt. Each agent (recommended model: sonnet, Mode 2) receives:
+Launch the test-writer agents in one parallel batch when supported. Include the full `qa-tdd` role definition loaded from `../../agents/qa-tdd.md` in every prompt. Each agent (default model: sonnet, or `swarm_model` when set; Mode 2) receives:
 
 - Its assigned slice of the test plan (only its bucket's findings + test code blocks, inlined into the prompt)
 - The list of test file paths it owns -- with an explicit instruction that it MUST NOT write to any file outside this list
@@ -219,7 +241,7 @@ For EACH P0 finding, one at a time:
 1. Mark the finding sub-task as `in_progress`.
 2. Print: `Fixing P0: [{finding_id}] {title} (attempt 1/{max_retries})`
 
-3. Launch an implementation agent (model: opus) with:
+3. Launch an implementation agent (default model: opus, or `swarm_model` when set) with:
    - The specific P0 finding from the report
    - The implementation-ready fix steps from the spec (tell the agent: "Read {spec_path} > P0 Fixes > Fix {finding_id} for the exact steps.")
    - The relevant test file(s) for this finding
@@ -263,7 +285,7 @@ For each selected priority level (P1, then P2, then P3):
    Implementing {N} P{level} fixes...
    ```
 
-3. Launch an implementation agent (model: sonnet) with:
+3. Launch an implementation agent (default model: sonnet, or `swarm_model` when set) with:
    - All findings for this priority level from the report
    - The corresponding fix details from the spec (tell the agent: "Read {spec_path} > P{level} Fixes for approach details.")
    - The relevant test files

@@ -1,13 +1,14 @@
 # QA Swarm
 
-![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fqa-swarm%2Fv1.5.0%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&prefix=v&color=blue)
+![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FMisterVitoPro%2Fqa-swarm%2Fv1.6.0%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&prefix=v&color=blue)
 
 AI-powered code quality analyzer for Claude Code and Codex that finds security, performance, architecture, and correctness issues across your codebase using specialized agents -- then fixes them via TDD.
 
 Part of the [Esper](https://github.com/MisterVitoPro/esper).
 
-- **6 core Sonnet agents** scan in parallel (security & error handling, performance & resources, correctness, architecture, data flow & taint analysis, async & concurrency patterns)
-- **Up to 6 optional Haiku agents** activate based on your project type (config review, type safety, supply chain, etc.)
+- **6 core agents** scan in parallel (security & error handling, performance & resources, correctness, architecture, data flow & taint analysis, async & concurrency patterns) -- security and architecture run on Opus by default, the rest on Sonnet
+- **Up to 6 optional agents** (Haiku by default; backwards compatibility on Opus) activate based on your project type (config review, type safety, supply chain, etc.)
+- **Pick the model tier** per run with `--model opus|sonnet|haiku` -- defaults keep the cost-balanced mix, `--model opus` gives every agent the deepest reasoning
 - Source files are **pre-read and embedded** in agent prompts for zero-overhead analysis
 - Findings are **deduplicated, ranked P0-P3**, tagged with confidence levels, and **corroborated** across agents
 - Fixes are implemented **test-first** -- failing tests are written before code is changed
@@ -28,7 +29,7 @@ $qa-swarm:attack "find bugs in the authentication and authorization flow"
 $qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md
 ```
 
-Start a new session after installation so the bundled skills are loaded. Version 1.5.0 keeps one shared orchestration source for both clients and loads every bundled specialist definition relative to the active skill before native subagent dispatch.
+Start a new session after installation so the bundled skills are loaded. Version 1.6.0 keeps one shared orchestration source for both clients and loads every bundled specialist definition relative to the active skill before native subagent dispatch.
 
 ## Why QA Swarm?
 
@@ -124,6 +125,34 @@ claude --plugin-dir /path/to/qa-swarm
 $qa-swarm:attack "check all API endpoints for security and input validation issues"
 ```
 
+### Choose a Model Tier
+
+Both skills accept an optional `--model` flag. Without it, each role uses its default (Opus for security & error handling, architecture, and backwards compatibility; Sonnet for the other core agents, fix planner, and TDD writers; Haiku for the other optional agents; Opus for P0 fixes). With it, every agent in that run uses the chosen tier:
+
+```
+# Deepest analysis -- every agent on Opus (roughly 3x the default cost)
+/qa-swarm:attack --model opus "audit the payment and billing flow"
+$qa-swarm:attack --model opus "audit the payment and billing flow"
+
+# Cheapest sweep -- every agent on Haiku
+/qa-swarm:attack --model haiku "quick pass over the CLI"
+
+# Implement with a chosen tier (the attack handoff forwards --model automatically)
+/qa-swarm:implement docs/qa-swarm/2026-04-02-report.md docs/qa-swarm/2026-04-02-spec.md docs/qa-swarm/2026-04-02-tests.md --model opus
+```
+
+You can also change the tier at the confirmation prompt with `model=opus`. If the host cannot provide the requested tier, the closest available model is used and noted -- the run never blocks.
+
+Tier names are host-neutral and are translated at dispatch time:
+
+| Tier | Claude Code | Codex |
+|------|-------------|-------|
+| `opus` | Opus | Terra |
+| `sonnet` | Sonnet | Luna |
+| `haiku` | Haiku | Luna |
+
+On Codex, `--model terra` and `--model luna` work as aliases for `opus` and `sonnet`. Because `sonnet` and `haiku` both map to Luna there, `--model haiku` gives no extra savings on Codex.
+
 After the swarm completes, the attack skill asks once whether to proceed to implementation. Selecting `Y` auto-hands off to the implement skill in a **fresh-context subagent**. Selecting `n` stops so you can resume later with either client:
 
 ```
@@ -176,7 +205,7 @@ All output is saved to `docs/qa-swarm/` in your project:
 <details>
 <summary><h2>Agent Roster</h2></summary>
 
-### Core Agents (always active -- Sonnet)
+### Core Agents (always active -- Opus for Security & Error Handling and Architecture, Sonnet otherwise)
 
 | Agent | Specialty |
 |-------|-----------|
@@ -187,7 +216,7 @@ All output is saved to `docs/qa-swarm/` in your project:
 | Data Flow & Taint Analysis | Source-to-sink tracing, unsanitized input, trust boundary crossings, encoding mismatches, data lifecycle issues |
 | Async & Concurrency Patterns | Unhandled rejections, fire-and-forget, async race conditions, event listener leaks, deadlocks, missing cancellation |
 
-### Optional Agents (activated by project type -- Haiku)
+### Optional Agents (activated by project type -- Opus for Backwards Compatibility, Haiku otherwise)
 
 | Agent | Activates When |
 |-------|----------------|
@@ -214,14 +243,14 @@ Step 1: Setup + Pre-read
   - Pre-read ALL source files (embedded in agent prompts)
 
 Step 2: Swarm (parallel)
-  - Launch 6-12 agents (6 Sonnet core + Haiku optional) with code embedded inline
+  - Launch 6-12 agents (6 core + optional, per-role default models or the --model tier) with code embedded inline
   - Zero Read tool calls -- agents analyze immediately
 
 Step 3: Inline Aggregation (no agent spawn)
   - Orchestrator deduplicates, validates severity/confidence
   - Applies corroboration scoring, formats ranked report
 
-Step 4: Fix Planner (1 Sonnet agent)
+Step 4: Fix Planner (1 agent, Sonnet by default)
   - Produces both implementation spec AND test plan
 
 Step 5: Save + Handoff
@@ -230,16 +259,20 @@ Step 5: Save + Handoff
 
 ### Model Usage
 
-| Role | Model | Count |
-|------|-------|-------|
-| Core QA agents | Sonnet | 6 |
-| Optional QA agents | Haiku | 0-6 |
+Defaults shown below apply when no `--model` flag is given. `--model opus|sonnet|haiku` replaces every default in that run with the chosen tier. Each agent definition under `agents/` carries its default in frontmatter; the skills override it at dispatch time.
+
+| Role | Default Model | Count |
+|------|---------------|-------|
+| Core: Security & Error Handling, Architecture | Opus | 2 |
+| Core: Performance, Correctness, Data Flow, Async | Sonnet | 4 |
+| Optional: Backwards Compatibility | Opus | 0-1 |
+| Optional: Config, Type Safety, Logging, Supply Chain, State | Haiku | 0-5 |
 | Fix Planner | Sonnet | 1 |
 | Aggregation | (inline) | 0 |
 | **Total (attack)** | | **7-13** |
 
-| Role | Model | Count |
-|------|-------|-------|
+| Role | Default Model | Count |
+|------|---------------|-------|
 | TDD Writer | Sonnet | 3 (parallel, file-partitioned) |
 | P0 Implementation | Opus | per finding |
 | P1-P3 Implementation | Sonnet | per priority |
@@ -257,6 +290,12 @@ Step 5: Save + Handoff
 1. **Fresh-context subagent handoff** -- `attack` auto-invokes `implement` in a subagent with zero context from the attack session. No manual `/clear` + re-invoke required.
 2. **3 parallel TDD writers** -- test files are partitioned so up to 3 `qa-tdd` agents write concurrently without conflicts. Suite runs once after all three finish.
 3. **Optional Context7 MCP** -- test-writer agents consult Context7 for current framework API docs when the MCP server is available; skip silently otherwise.
+
+### What's New (v1.6.0)
+
+1. **Selectable model tier** -- `--model opus|sonnet|haiku` on `attack` and `implement` runs every agent on the chosen tier, and `attack` forwards the choice to `implement` on handoff.
+2. **Opus defaults for the highest-stakes lenses** -- Security & Error Handling, Architecture, and Backwards Compatibility now run on Opus by default; the remaining roles keep their Sonnet/Haiku defaults.
+3. **Codex model mapping** -- tier names translate at dispatch time: `opus` -> Terra, `sonnet` and `haiku` -> Luna. Claude Code uses the tier names directly.
 
 </details>
 

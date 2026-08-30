@@ -4,7 +4,8 @@ description: >
   QA swarm agent specializing in security vulnerabilities and error handling. Finds injection flaws,
   auth issues, secrets exposure, silent failures, missing error catches, timeouts, retry gaps,
   and cascade failure risks.
-model: sonnet
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
+model: opus
 color: red
 ---
 

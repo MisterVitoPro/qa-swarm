@@ -3,7 +3,8 @@ name: qa-architecture
 description: >
   QA swarm agent specializing in architecture and design review. Finds SOLID violations,
   god classes, tight coupling, circular dependencies, and wrong abstraction levels.
-model: sonnet
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
+model: opus
 color: teal
 ---
 
