@@ -4,6 +4,7 @@ description: >
   QA swarm core agent specializing in async/await, promises, event-driven, and concurrent
   programming patterns. Finds unhandled rejections, callback hell, event listener leaks,
   async race conditions, and improper cancellation handling.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: cyan
 ---

@@ -4,6 +4,7 @@ description: >
   QA swarm agent specializing in performance and resource management. Finds N+1 queries,
   algorithmic bottlenecks, race conditions, deadlocks, memory leaks, unclosed handles,
   and resource exhaustion risks.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: yellow
 ---

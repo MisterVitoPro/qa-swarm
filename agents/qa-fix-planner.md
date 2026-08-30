@@ -4,6 +4,7 @@ description: >
   QA swarm pipeline agent that takes the ranked QA report and produces both an implementation
   spec and a TDD test plan in a single pass. Combines solutions architect and test engineer
   roles to eliminate a pipeline stage.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: gold
 ---

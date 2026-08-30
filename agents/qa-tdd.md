@@ -3,6 +3,7 @@ name: qa-tdd
 description: >
   QA swarm pipeline agent that produces test plans and writes actual test files from QA findings.
   Creates tests that fail before fixes and pass after, following TDD red-green methodology.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: green
 ---

@@ -3,6 +3,7 @@ name: qa-type-safety
 description: >
   QA swarm optional agent specializing in type and null safety. Finds null dereferences,
   unsafe type casts, type coercion traps, and missing type guards.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: haiku
 color: indigo
 ---

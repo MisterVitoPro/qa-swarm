@@ -4,6 +4,7 @@ description: >
   QA swarm agent specializing in data integrity, API contracts, and logic correctness. Finds
   schema mismatches, data loss, validation gaps, contract violations, off-by-one errors,
   wrong boolean operators, and boundary condition failures.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: blue
 ---

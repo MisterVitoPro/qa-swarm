@@ -3,7 +3,8 @@ name: qa-backwards-compat
 description: >
   QA swarm optional agent specializing in backwards compatibility analysis. Finds breaking API
   changes, serialization format shifts, and migration gaps that break existing consumers.
-model: haiku
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
+model: opus
 color: navy
 ---
 

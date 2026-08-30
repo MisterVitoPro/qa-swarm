@@ -8,7 +8,35 @@ description: >
   quality analysis, find issues, check for bugs, swarm analysis.
 ---
 
-Orchestrate a QA Swarm analysis. Treat the text supplied with the skill invocation, or the user's current request when no explicit argument was supplied, as the analysis prompt.
+Orchestrate a QA Swarm analysis. Treat the text supplied with the skill invocation, or the user's current request when no explicit argument was supplied, as the analysis prompt (after removing any `--model` option, see below).
+
+## Model selection
+
+The swarm supports three model tiers: `opus`, `sonnet`, and `haiku`. Every role has a default (listed with each dispatch below and in its `../../agents/*.md` frontmatter), and the user can override the whole run with one option:
+
+- `--model opus` | `--model sonnet` | `--model haiku` anywhere in the invocation text (also accept `model=opus` and plain-language forms such as "use opus" or "with haiku").
+- Strip the option from the text before using the remainder as the analysis prompt.
+- Store the result as `swarm_model`. When no option is given, `swarm_model` is `auto` and every role uses its default.
+
+When `swarm_model` is set, pass it as the model for EVERY agent dispatched by this skill (core, optional, fix planner) and forward it to the implement handoff in Step 6. When it is `auto`, dispatch each role with its default. Model labels are recommendations; if the host cannot provide the requested tier, use the closest available model and print one line saying which model was substituted -- never block the run.
+
+### Host model mapping
+
+Tier names (`opus`, `sonnet`, `haiku`) are host-neutral. Resolve each role's tier (default or `swarm_model`) and then translate it to the host's model name at dispatch time:
+
+| Tier | Claude Code | Codex |
+|------|-------------|-------|
+| opus | opus | Terra |
+| sonnet | sonnet | Luna |
+| haiku | haiku | Luna |
+
+On Codex, also accept `--model terra` (= opus) and `--model luna` (= sonnet) as aliases. Keep `swarm_model` and all printed tier labels in tier terms; when running on Codex, print the mapped name next to the tier the first time it is used (for example `opus -> Terra`). Note that `sonnet` and `haiku` both resolve to Luna on Codex, so `--model haiku` saves nothing there.
+
+Examples:
+```
+Claude Code: /qa-swarm:attack --model opus "audit the payment flow"
+Codex:       $qa-swarm:attack --model opus "audit the payment flow"   (dispatches on Terra)
+```
 
 ## Portable role loading
 
@@ -89,15 +117,21 @@ Agents to deploy:
   Core (6):  Security & Error, Performance & Resources, Correctness, Architecture, Data Flow, Async Patterns
   Optional:  {list of selected optional agents, or "none"}
 
-Estimated cost (API tokens):
+Model: {swarm_model, or "auto (opus: security, architecture, compat; sonnet: other core + fix planner; haiku: other optional)"}
+{on Codex, add: "Codex mapping: opus -> Terra, sonnet/haiku -> Luna"}
+
+Estimated cost (API tokens, auto model mix):
   Small project  (< 50 files):   ~$0.30-0.80
   Medium project (50-200 files): ~$0.80-2.50
   Large project  (200+ files):   ~$2.50-6.00
+  {if swarm_model is opus: "Opus selected -- expect roughly 3x the figures above."}
+  {if swarm_model is haiku: "Haiku selected -- expect roughly 1/5 of the figures above."}
+  {if swarm_model is haiku on Codex: "Haiku maps to Luna on Codex (same as sonnet) -- no additional savings."}
 
-Proceed? (Y/n, or adjust optional agents: "+logging -supply-chain")
+Proceed? (Y/n, adjust optional agents: "+logging -supply-chain", or change model: "model=opus")
 ```
 
-Wait for user confirmation. If "n", stop. Parse any agent adjustments.
+Wait for user confirmation. If "n", stop. Parse any agent adjustments and any `model=` change (update `swarm_model` accordingly).
 
 Record timestamp: `t_setup_done`.
 
@@ -134,21 +168,23 @@ Analyze the code provided above according to your specialty. Return your finding
 
 **Core agents and their scoped file contents:**
 
-1. **qa-security-error** (model: sonnet) -- receives contents of: auth + api + db + config + io + entry + logic files
-2. **qa-performance-resources** (model: sonnet) -- receives contents of: db + io + api + logic + state + entry + config files
-3. **qa-correctness** (model: sonnet) -- receives contents of: db + api + logic + io + config files
-4. **qa-architecture** (model: sonnet) -- receives contents of: entry + api + logic + config + db + io files
-5. **qa-data-flow** (model: sonnet) -- receives contents of: auth + api + db + io + logic + entry files
-6. **qa-async-patterns** (model: sonnet) -- receives contents of: api + io + logic + state + db + entry files
+1. **qa-security-error** (default model: opus) -- receives contents of: auth + api + db + config + io + entry + logic files
+2. **qa-performance-resources** (default model: sonnet) -- receives contents of: db + io + api + logic + state + entry + config files
+3. **qa-correctness** (default model: sonnet) -- receives contents of: db + api + logic + io + config files
+4. **qa-architecture** (default model: opus) -- receives contents of: entry + api + logic + config + db + io files
+5. **qa-data-flow** (default model: sonnet) -- receives contents of: auth + api + db + io + logic + entry files
+6. **qa-async-patterns** (default model: sonnet) -- receives contents of: api + io + logic + state + db + entry files
 
 **Optional agents and their scoped file contents (if selected):**
 
-- **qa-config-env** (model: haiku): config + entry + io files
-- **qa-type-safety** (model: haiku): logic + api + db files
-- **qa-logging** (model: haiku): io + api + entry files
-- **qa-backwards-compat** (model: haiku): api + db + config files
-- **qa-supply-chain** (model: haiku): config files + dependency/package files
-- **qa-state-mgmt** (model: haiku): state + frontend + logic files
+- **qa-config-env** (default model: haiku): config + entry + io files
+- **qa-type-safety** (default model: haiku): logic + api + db files
+- **qa-logging** (default model: haiku): io + api + entry files
+- **qa-backwards-compat** (default model: opus): api + db + config files
+- **qa-supply-chain** (default model: haiku): config files + dependency/package files
+- **qa-state-mgmt** (default model: haiku): state + frontend + logic files
+
+The default models above apply only when `swarm_model` is `auto`. When the user chose `--model opus|sonnet|haiku`, dispatch every agent in this step with `swarm_model` instead. In both cases translate the tier through the host model mapping (Codex: opus -> Terra, sonnet/haiku -> Luna) before launching.
 
 Launch all selected roles in one parallel batch when the host supports it. Each prompt must include the corresponding bundled role definition loaded from `../../agents/`.
 
@@ -286,7 +322,7 @@ Print:
 
 Launch ONE agent:
 
-**qa-fix-planner** (model: sonnet):
+**qa-fix-planner** (default model: sonnet; use `swarm_model` when set):
 - Receives the final ranked report (full markdown from Step 3)
 - Has access to the codebase (to read existing test patterns and verify P0 evidence)
 - Produces BOTH the implementation spec AND the test plan
@@ -322,30 +358,32 @@ Compute phase durations (format as Xm Ys):
 - Save Files: `t_save_done - t_output_done`
 - Total: `t_save_done - t_start` minus user confirm wait
 
-Count agents dispatched:
-- Core agents: always 6 (Sonnet)
-- Optional agents: count selected (Haiku)
-- Fix Planner: always 1 (Sonnet)
+Count agents dispatched, grouped by tier (on Codex, append the mapped name, e.g. `Opus (Terra)`, `Sonnet (Luna)`, `Haiku (Luna)`):
+- Core agents: always 6 (default: security-error and architecture on Opus, the other 4 on Sonnet)
+- Optional agents: count selected (default: backwards-compat on Opus, the rest on Haiku)
+- Fix Planner: always 1 (default Sonnet)
+- When `swarm_model` is set, all `7 + optional_count` agents count under that single model.
 
 ```
 QA Swarm Analysis Complete
 ============================
 Findings: {total} ({P0} P0, {P1} P1, {P2} P2, {P3} P3)
 Confidence: {confirmed} confirmed, {likely} likely, {suspected} suspected
+Model: {swarm_model, or "auto"}
 
 Phase Timing:
   Setup + Pre-read  {Xm Ys}
-  Agent Swarm       {Xm Ys}   ({N} agents in parallel: 6 Sonnet core + Haiku optional)
+  Agent Swarm       {Xm Ys}   ({N} agents in parallel: 6 core + {optional_count} optional)
   Aggregation       {Xm Ys}   (inline -- no agent)
-  Fix Planner       {Xm Ys}   (1 Sonnet agent)
+  Fix Planner       {Xm Ys}   (1 agent)
   Save Files        {Xm Ys}
   ────────────────────────
   Total             {Xm Ys}   (excludes user confirmation wait)
 
 Agent Usage:
-  Sonnet : {6 + 1} agents  (6 core + 1 fix planner)
-  Haiku  : {optional_count} agents  ({optional_count} optional)
-  Opus   : 0 agents
+  Opus   : {opus_count} agents  ({breakdown, e.g. "2 core + 1 optional"})
+  Sonnet : {sonnet_count} agents  ({breakdown, e.g. "4 core + 1 fix planner"})
+  Haiku  : {haiku_count} agents  ({breakdown, e.g. "{N} optional"})
   Total  : {7 + optional_count} agents dispatched
 
 Report:    docs/qa-swarm/{DATE}-report.md
@@ -362,20 +400,20 @@ Ask the user once:
 Proceed to implementation now? [Y/n]
 (Selecting Y hands off to a fresh-context subagent running the QA Swarm implement skill.
  Selecting n stops here -- you can resume later by running:
-   Claude Code: /qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md
-   Codex: $qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md)
+   Claude Code: /qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md{ " --model {swarm_model}" if set }
+   Codex: $qa-swarm:implement docs/qa-swarm/{DATE}-report.md docs/qa-swarm/{DATE}-spec.md docs/qa-swarm/{DATE}-tests.md{ " --model {swarm_model}" if set })
 ```
 
 If the user declines (n), STOP.
 
-If the user confirms (Y or empty), spawn a fresh-context general subagent with the following self-contained prompt. Resolve the sibling implementation skill as `../implement/SKILL.md` relative to this file and pass its absolute path; the subagent has no access to this session's context, so the prompt MUST stand alone:
+If the user confirms (Y or empty), spawn a fresh-context general subagent with the following self-contained prompt. Resolve the sibling implementation skill as `../implement/SKILL.md` relative to this file and pass its absolute path; the subagent has no access to this session's context, so the prompt MUST stand alone. Append `--model {swarm_model}` to the invocation input only when the user chose a model (omit it for `auto` so implement uses its own per-role defaults):
 
 ```
 You are executing the QA Swarm implement skill in a fresh session.
 
 Read the complete skill instructions at {implement_skill_abs_path}. Treat these as
 the active instructions and execute them with this invocation input:
-  {report_abs_path} {spec_abs_path} {tests_abs_path}
+  {report_abs_path} {spec_abs_path} {tests_abs_path}{ " --model {swarm_model}" if set }
 
 All three files already exist on disk. Read them fresh. Follow the skill
 exactly -- including phase selection (present the table and wait for user input

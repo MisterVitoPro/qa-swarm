@@ -3,6 +3,7 @@ name: qa-logging
 description: >
   QA swarm optional agent specializing in logging and observability. Finds missing log
   statements, sensitive data in logs, trace gaps, and inconsistent log levels.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: haiku
 color: silver
 ---

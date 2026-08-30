@@ -4,6 +4,7 @@ description: >
   QA swarm core agent specializing in data flow and taint analysis. Traces user input from
   entry points through transformations to sinks, finding injection paths, unsanitized data,
   trust boundary crossings, and data transformation bugs.
+# Default model for this role. The attack/implement skills override it with --model opus|sonnet|haiku.
 model: sonnet
 color: orange
 ---
